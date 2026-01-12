@@ -3,14 +3,21 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Eye, Pencil, Trash2, Filter } from "lucide-react";
+import { Filter } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 
 import { useDeleteTest } from "@/hooks/tests/useDeleteTest";
 import { useDebounce } from "@/hooks/useDebounce";
-import { Test, TestFilters } from "@/types";
+import {  TestFilters } from "@/types";
 import { useTests } from "@/hooks/tests/useTests";
+import { TestCard } from "@/components/tests/TestCard";
+import { Upload, Download } from "lucide-react";
+import { useRef } from "react";
+import api from "@/lib/api";
+import { toast } from "react-toastify";
+import { AxiosError } from "axios";
+
 
 /* ---------------- SKELETON ---------------- */
 const TestSkeleton = () => (
@@ -22,84 +29,14 @@ const TestSkeleton = () => (
 );
 
 /* ---------------- CARD ---------------- */
-const TestCard = ({
-  test,
-  onDelete,
-}: {
-  test: Test;
-  onDelete: (id: number) => void;
-}) => {
-  const [open, setOpen] = useState(false);
 
-  return (
-    <motion.div layout className="border rounded-xl p-4 shadow-sm">
-      {/* HEADER */}
-      <div className="flex justify-between items-center">
-        <div className="space-y-1">
-          <h3 className="text-lg font-semibold">{test.testName}</h3>
-          <p className="text-sm text-gray-500">
-            Code: {test.testCode} | Amount: ₹{test.amount} | Reported:{" "}
-            {new Date(test.createdAt).toLocaleString()}
-          </p>
-        </div>
-
-        <div className="flex gap-3">
-          <Eye
-            className="cursor-pointer text-blue-500"
-            onClick={() => setOpen(!open)}
-          />
-          <Pencil className="cursor-pointer text-yellow-500" />
-          <Trash2
-            className="cursor-pointer text-red-500"
-            onClick={() => onDelete(test.id)}
-          />
-        </div>
-      </div>
-
-      {/* DETAILS */}
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="mt-3 space-y-1 text-sm text-gray-600"
-          >
-            <p>
-              <b>Department:</b> {test.department}
-            </p>
-            <p>
-              <b>Method:</b> {test.methodName}
-            </p>
-            <p>
-              <b>Specimen:</b> {test.specimen}
-            </p>
-            <p>
-              <b>Volume:</b> {test.specimenVolume}
-            </p>
-            <p>
-              <b>Container:</b> {test.container}
-            </p>
-            <p>
-              <b>Reported:</b> {test.reported}
-            </p>
-            {test.specialInstruction && (
-              <p>
-                <b>Note:</b> {test.specialInstruction}
-              </p>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
-  );
-};
 
 /* ---------------- PAGE ---------------- */
 export default function TestsPage() {
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState<TestFilters>({});
   const [showAdvanced, setShowAdvanced] = useState(false);
+const fileInputRef = useRef<HTMLInputElement>(null);
 
   const deleteTest = useDeleteTest();
 
@@ -120,6 +57,46 @@ export default function TestsPage() {
     filters: debouncedFilters,
   });
 
+  const handleExport = async () => {
+  try {
+    const res = await api.get("/filehandling/tests/export", {
+      responseType: "blob",
+    });
+
+    const url = window.URL.createObjectURL(new Blob([res.data]));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "tests.xlsx";
+    link.click();
+    window.URL.revokeObjectURL(url);
+  } catch {
+    toast.error("Failed to export tests");
+  }
+};
+
+const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  try {
+    await api.post("/filehandling/tests/import", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+
+    toast.success("Tests imported successfully");
+    setPage(1);
+  } catch (error) {
+  const err = error as AxiosError<{ message?: string }>;
+  toast.error(err.response?.data?.message || "Import failed");
+} finally {
+    e.target.value = "";
+  }
+};
+
+
   return (
     <div className="p-6">
       {/* HEADER */}
@@ -129,6 +106,34 @@ export default function TestsPage() {
         </h1>
 
         <div className="flex gap-2 flex-wrap items-center">
+          {/* EXPORT */}
+<Button
+  variant="outline"
+  className="flex items-center gap-2"
+  onClick={handleExport}
+>
+  <Download size={16} /> Export
+</Button>
+
+{/* IMPORT */}
+<>
+  <input
+    ref={fileInputRef}
+    type="file"
+    accept=".xlsx,.xls"
+    className="hidden"
+    onChange={handleImport}
+  />
+
+  <Button
+    variant="outline"
+    className="flex items-center gap-2"
+    onClick={() => fileInputRef.current?.click()}
+  >
+    <Upload size={16} /> Import
+  </Button>
+</>
+
           {/* Top filters */}
           <Input
             placeholder="Test Name"
