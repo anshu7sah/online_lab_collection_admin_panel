@@ -18,6 +18,8 @@ type TestFormValues = {
   container: string;
   reported: string;
   specialInstruction?: string;
+  createdAt?: string | undefined;
+  updatedAt?: string | undefined;
 };
 
 interface Props {
