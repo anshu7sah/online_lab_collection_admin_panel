@@ -1,17 +1,23 @@
 "use client";
-
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAdminLogin } from "@/hooks/useAdminLogin";
+import { useCurrent } from "@/hooks/useCurrent";
 
 export default function AdminLoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
+  
+  const { data, isLoading } = useCurrent();
   const { mutate, isPending, error } = useAdminLogin();
 
-  
+  // Redirect if already logged in
+  useEffect(() => {
+    if (data && !isLoading) {
+      router.replace("/dashboard");
+    }
+  }, [data, isLoading, router]);
 
   const login = () => {
     mutate(
@@ -60,7 +66,7 @@ export default function AdminLoginPage() {
           <button
             onClick={login}
             disabled={isPending}
-            className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white py-3 rounded-xl font-semibold text-lg shadow-lg transition-all disabled:opacity-50"
+            className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white py-3 rounded-xl font-semibold text-lg shadow-lg transition-all disabled:opacity-50 cursor-pointer"
           >
             {isPending ? "Signing In..." : "Sign In"}
           </button>

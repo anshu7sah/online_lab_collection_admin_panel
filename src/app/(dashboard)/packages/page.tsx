@@ -270,7 +270,7 @@ export default function PackagesPage() {
               <h2 className="text-xl font-bold">Advanced Filters</h2>
               <Button
                 onClick={() => setShowAdvanced(false)}
-                className="cursor-pointer hover:bg-gray-100 transition"
+                className="cursor-pointer hover:bg-gray-800 transition"
               >
                 Close
               </Button>
