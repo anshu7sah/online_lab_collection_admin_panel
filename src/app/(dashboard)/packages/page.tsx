@@ -56,7 +56,7 @@ function PackageCard({
   return (
     <motion.div
       layout
-      className="border rounded-xl p-4 hover:shadow-md bg-white"
+      className="border rounded-xl p-4 hover:shadow-md bg-white transition"
     >
       <div className="flex justify-between items-center">
         <div>
@@ -70,13 +70,18 @@ function PackageCard({
           <Button
             variant="outline"
             size="sm"
+            className="cursor-pointer hover:bg-gray-100 transition"
             onClick={() => setShowDetails((v) => !v)}
           >
             {showDetails ? "Hide Details" : "View Details"}
           </Button>
 
           <Link href={`/packages/${packageData.id}/edit`}>
-            <Button variant="secondary" size="sm">
+            <Button
+              variant="secondary"
+              size="sm"
+              className="cursor-pointer hover:bg-gray-200 transition"
+            >
               Update
             </Button>
           </Link>
@@ -84,6 +89,7 @@ function PackageCard({
           <Button
             variant="destructive"
             size="sm"
+            className="cursor-pointer hover:bg-red-700 transition"
             onClick={() => onDelete(packageData.id)}
           >
             Delete
@@ -197,14 +203,15 @@ export default function PackagesPage() {
 
           <Button
             onClick={() => setShowAdvanced(true)}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 cursor-pointer hover:bg-gray-800 transition"
           >
             <Filter size={16} /> Filters
           </Button>
 
           <Link
             href="/packages/create"
-            className="bg-black text-white px-4 py-2 rounded hover:bg-gray-800"
+            className="bg-black text-white px-4 py-2 rounded cursor-pointer
+                       hover:bg-gray-800 transition"
           >
             + Create Package
           </Link>
@@ -230,7 +237,11 @@ export default function PackagesPage() {
       {/* PAGINATION */}
       {data && (
         <div className="flex justify-center gap-4 pt-6">
-          <Button disabled={page === 1} onClick={() => setPage((p) => p - 1)}>
+          <Button
+            disabled={page === 1}
+            onClick={() => setPage((p) => p - 1)}
+            className="cursor-pointer hover:bg-gray-200 transition"
+          >
             Prev
           </Button>
           <span className="py-2">
@@ -239,6 +250,7 @@ export default function PackagesPage() {
           <Button
             disabled={page === data.pagination.totalPages}
             onClick={() => setPage((p) => p + 1)}
+            className="cursor-pointer hover:bg-gray-200 transition"
           >
             Next
           </Button>
@@ -256,15 +268,19 @@ export default function PackagesPage() {
           >
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-bold">Advanced Filters</h2>
-              <Button onClick={() => setShowAdvanced(false)}>Close</Button>
+              <Button
+                onClick={() => setShowAdvanced(false)}
+                className="cursor-pointer hover:bg-gray-100 transition"
+              >
+                Close
+              </Button>
             </div>
 
             <div className="space-y-3">
               <Input
                 placeholder="Name"
                 value={search}
-                onChange={(e) => setSearch(e.target.value)
-                }
+                onChange={(e) => setSearch(e.target.value)}
               />
 
               <Input
@@ -306,6 +322,7 @@ export default function PackagesPage() {
                   setPage(1);
                   setSearch("");    
                 }}
+                className="cursor-pointer hover:bg-gray-100 transition"
               >
                 Clear Filters
               </Button>
