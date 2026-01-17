@@ -1,23 +1,25 @@
 "use client";
-import { useEffect, useState } from "react";
+
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAdminLogin } from "@/hooks/useAdminLogin";
 import { useCurrent } from "@/hooks/useCurrent";
+import { Spinner } from "@/components/ui/spinner";
 
 export default function AdminLoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  
-  const { data, isLoading } = useCurrent();
+
+  const { data: currentUser, isLoading } = useCurrent();
   const { mutate, isPending, error } = useAdminLogin();
 
-  // Redirect if already logged in
+  // Redirect if user is already logged in
   useEffect(() => {
-    if (data && !isLoading) {
+    if (!isLoading && currentUser) {
       router.replace("/dashboard");
     }
-  }, [data, isLoading, router]);
+  }, [currentUser, isLoading, router]);
 
   const login = () => {
     mutate(
@@ -30,6 +32,28 @@ export default function AdminLoginPage() {
     );
   };
 
+  // -------------------
+  // Render logic
+  // -------------------
+
+  // While checking session or redirecting
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-tr from-blue-100 to-blue-200">
+        <div className="text-center">
+          <Spinner className="w-12 h-12 text-blue-600" />
+          <p className="mt-4 text-gray-700">Checking session...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If user is already logged in, do not render the login form
+  if (currentUser) {
+    return null; // redirecting, avoid flash
+  }
+
+  // Render login form if user is NOT logged in
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-tr from-blue-100 to-blue-200">
       <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl p-10 border border-gray-100">

@@ -1,13 +1,14 @@
 "use client";
 
-import api from "@/lib/api";
+import { useLogout } from "@/hooks/useLogout";
 import { useRouter } from "next/navigation";
 
 export default function Navbar() {
   const router = useRouter();
+  const logoutHook = useLogout();
 
   const logout = async () => {
-    await api.post("/auth/logout");
+    await logoutHook.mutateAsync();
     router.replace("/login");
   };
 

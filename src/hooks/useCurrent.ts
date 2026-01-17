@@ -51,8 +51,13 @@ export const useCurrent = () => {
     queryKey: ["current-user"],
     queryFn: async () => {
       const { data } = await api.get("/auth/current");
-      return data.user;
+      return data.user; // null if not logged in
     },
+    staleTime: 0,            // never treat as fresh
+           // clear cache immediately when unused
+    refetchOnMount: "always", // always refetch on mount
+    refetchOnWindowFocus: false,
   });
 };
+
 
