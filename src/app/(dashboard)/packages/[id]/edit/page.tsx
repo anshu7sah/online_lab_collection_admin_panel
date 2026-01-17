@@ -4,15 +4,18 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
 import { PackageForm } from "@/components/packages/PackageForm";
-import { Package, PackageFormValues } from "@/types";
+import { Package, PackageFormValues, Test } from "@/types";
 import { toast } from "react-toastify";
 import { AxiosError } from "axios";
+import { useUpdatePackage } from "@/hooks/packages/useUpdatePackage";
 
 export default function UpdatePackagePage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
 
   const [loading, setLoading] = useState(false);
+    const {updatePackage} =useUpdatePackage();
+
   const [initialData, setInitialData] = useState<{
     name: string;
     description?: string | null;
@@ -33,8 +36,8 @@ export default function UpdatePackagePage() {
           name: pkg.name,
           description: pkg.description,
           price: pkg.price,
-          tests: pkg.tests.map((t: any) => ({
-            id: t.testId ?? t.id,
+          tests: pkg.tests.map((t: Test) => ({
+            id:   t.id,
             testName: t.testName,
             testCode: t.testCode,
             department: t.department,
@@ -52,10 +55,14 @@ export default function UpdatePackagePage() {
 
   /* ---------------- SUBMIT ---------------- */
   const handleUpdate = async (data: PackageFormValues) => {
+
     try {
       setLoading(true);
 
-      await api.put(`/packages/${id}`, data);
+
+      await updatePackage(Number(id), data);
+
+      // await api.put(`/packages/${id}`, data);
 
       toast.success("Package updated successfully");
       router.push("/packages");

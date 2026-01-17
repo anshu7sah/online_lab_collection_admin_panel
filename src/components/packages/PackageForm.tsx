@@ -24,18 +24,44 @@ export function PackageForm({
   onSubmit,
 }: Props) {
   /* ---------------- FORM STATE ---------------- */
-  const [form, setForm] = useState({
+  const [form, setForm] = useState(() => ({
     name: defaultValues?.name ?? "",
     description: defaultValues?.description ?? "",
     price: defaultValues?.price ?? 0,
-  });
+  }));
 
   /* ---------------- SELECTED TESTS ---------------- */
   const [selectedTests, setSelectedTests] = useState<Test[]>(
     defaultValues?.tests ?? []
   );
 
-  /* ---------------- SEARCH (DEBOUNCED) ---------------- */
+  /* ---------------- TOTAL TEST PRICE ---------------- */
+  const totalTestAmount = useMemo(
+    () => selectedTests.reduce((sum, t) => sum + t.amount, 0),
+    [selectedTests]
+  );
+
+  /* ---------------- INITIAL DISCOUNT ---------------- */
+  const initialDiscountAmount = useMemo(() => {
+    if (!defaultValues) return "";
+    const total = defaultValues.tests.reduce((s, t) => s + t.amount, 0);
+    const discount = Math.max(total - defaultValues.price, 0);
+    return discount ? discount.toFixed(2) : "";
+  }, [defaultValues]);
+
+  const initialDiscountPercent = useMemo(() => {
+    if (!defaultValues) return "";
+    const total = defaultValues.tests.reduce((s, t) => s + t.amount, 0);
+    if (!total) return "";
+    const discount = Math.max(total - defaultValues.price, 0);
+    return ((discount / total) * 100).toFixed(2);
+  }, [defaultValues]);
+
+  /* ---------------- DISCOUNT STATE ---------------- */
+  const [discountPercent, setDiscountPercent] = useState(initialDiscountPercent);
+  const [discountAmount, setDiscountAmount] = useState(initialDiscountAmount);
+
+  /* ---------------- SEARCH ---------------- */
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 400);
 
@@ -50,94 +76,58 @@ export function PackageForm({
 
   const tests = data?.tests ?? [];
 
-  /* ---------------- PRICE CALCULATION ---------------- */
-  const totalTestAmount = useMemo(() => {
-    return selectedTests.reduce((sum, t) => sum + t.amount, 0);
-  }, [selectedTests]);
-
-  /* ---------------- DISCOUNT STATE (use string for inputs) ---------------- */
-  const [discountPercent, setDiscountPercent] = useState<string>("");
-  const [discountAmount, setDiscountAmount] = useState<string>("");
-
+  /* ---------------- FINAL PRICE ---------------- */
   const finalPrice = useMemo(() => {
-    const amount = Number(discountAmount) || 0;
-    return Math.max(totalTestAmount - amount, 0);
+    return Math.max(totalTestAmount - (Number(discountAmount) || 0), 0);
   }, [totalTestAmount, discountAmount]);
 
   /* ---------------- DISCOUNT HANDLERS ---------------- */
   const handleDiscountPercent = (value: string) => {
     setDiscountPercent(value);
-
     const percent = Number(value);
-    if (isNaN(percent) || percent < 0) {
-      setDiscountAmount("");
-      setForm(prev => ({ ...prev, price: totalTestAmount }));
-      return;
-    }
+    if (isNaN(percent) || percent < 0) return;
 
     const amount = (totalTestAmount * percent) / 100;
-    setDiscountAmount(amount ? amount.toFixed(2) : "");
-    setForm(prev => ({ ...prev, price: Number((totalTestAmount - amount).toFixed(2)) }));
+    setDiscountAmount(amount.toFixed(2));
+    setForm(p => ({ ...p, price: totalTestAmount - amount }));
   };
 
   const handleDiscountAmount = (value: string) => {
     setDiscountAmount(value);
-
     const amount = Number(value);
-    if (isNaN(amount) || amount < 0) {
-      setDiscountPercent("");
-      setForm(prev => ({ ...prev, price: totalTestAmount }));
-      return;
-    }
+    if (isNaN(amount) || amount < 0) return;
 
-    const percent = totalTestAmount ? (amount / totalTestAmount) * 100 : 0;
-    setDiscountPercent(percent ? percent.toFixed(2) : "");
-    setForm(prev => ({ ...prev, price: Number((totalTestAmount - amount).toFixed(2)) }));
+    const percent = totalTestAmount
+      ? (amount / totalTestAmount) * 100
+      : 0;
+    setDiscountPercent(percent.toFixed(2));
+    setForm(p => ({ ...p, price: totalTestAmount - amount }));
   };
 
-  /* ---------------- ADD / REMOVE TESTS ---------------- */
+  /* ---------------- ADD / REMOVE ---------------- */
   const addTest = (test: Test) => {
     if (selectedTests.some(t => t.id === test.id)) return;
-
     const updated = [...selectedTests, test];
     setSelectedTests(updated);
-
-    const newTotal = updated.reduce((s, t) => s + t.amount, 0);
-    const discountAmt = (newTotal * (Number(discountPercent) || 0)) / 100;
-
-    setDiscountAmount(discountAmt ? discountAmt.toFixed(2) : "");
-    setForm(prev => ({
-      ...prev,
-      price: Number((newTotal - discountAmt).toFixed(2)),
-    }));
+    setForm(p => ({ ...p, price: finalPrice }));
   };
 
   const removeTest = (id: number) => {
     const updated = selectedTests.filter(t => t.id !== id);
     setSelectedTests(updated);
-
-    const newTotal = updated.reduce((s, t) => s + t.amount, 0);
-    const discountAmt = (newTotal * (Number(discountPercent) || 0)) / 100;
-
-    setDiscountAmount(discountAmt ? discountAmt.toFixed(2) : "");
-    setForm(prev => ({
-      ...prev,
-      price: Number((newTotal - discountAmt).toFixed(2)),
-    }));
+    setForm(p => ({ ...p, price: finalPrice }));
   };
 
   /* ---------------- SUBMIT ---------------- */
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    const payload: PackageFormValues = {
+    onSubmit({
       name: form.name,
       description: form.description,
       price: form.price,
       testIds: selectedTests.map(t => t.id),
-    };
-
-    onSubmit(payload);
+    });
   };
 
   /* ================= UI ================= */
@@ -146,7 +136,7 @@ export function PackageForm({
       onSubmit={handleSubmit}
       className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-7xl"
     >
-      {/* ================= LEFT ================= */}
+      {/* LEFT */}
       <div className="lg:col-span-2 space-y-6">
         <h1 className="text-2xl font-semibold">{title}</h1>
 
@@ -162,25 +152,21 @@ export function PackageForm({
           className="w-full border p-2 rounded"
           placeholder="Description"
           value={form.description ?? ""}
-          onChange={e =>
-            setForm({ ...form, description: e.target.value })
-          }
+          onChange={e => setForm({ ...form, description: e.target.value })}
         />
 
-        {/* -------- SEARCH -------- */}
         <input
           className="w-full border p-2 rounded"
-          placeholder="Search tests by name or code..."
+          placeholder="Search tests..."
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
 
-        {/* -------- AVAILABLE TESTS -------- */}
         <div className="border rounded max-h-72 overflow-y-auto divide-y">
           {tests.map(test => (
             <div
               key={test.id}
-              className="flex justify-between items-center p-3 hover:bg-gray-50"
+              className="flex justify-between items-center p-3 hover:bg-gray-50 transition"
             >
               <div>
                 <p className="font-medium">{test.testName}</p>
@@ -192,7 +178,8 @@ export function PackageForm({
               <button
                 type="button"
                 onClick={() => addTest(test)}
-                className="px-3 py-1 text-sm border rounded hover:bg-black hover:text-white"
+                className="px-3 py-1 text-sm border rounded cursor-pointer
+                           hover:bg-black hover:text-white transition"
               >
                 Add ₹{test.amount}
               </button>
@@ -201,30 +188,25 @@ export function PackageForm({
         </div>
       </div>
 
-      {/* ================= RIGHT ================= */}
+      {/* RIGHT */}
       <div className="space-y-4">
-        {/* -------- SELECTED TESTS -------- */}
         <div className="border rounded p-4 space-y-3">
           <h3 className="font-medium">Selected Tests</h3>
-
-          {selectedTests.length === 0 && (
-            <p className="text-sm text-gray-500">
-              No tests selected
-            </p>
-          )}
 
           {selectedTests.map(test => (
             <div
               key={test.id}
-              className="flex justify-between items-center text-sm"
+              className="flex justify-between text-sm items-center"
             >
               <span>{test.testName}</span>
-              <div className="flex items-center gap-2">
+              <div className="flex gap-2 items-center">
                 <span>₹{test.amount}</span>
                 <button
                   type="button"
                   onClick={() => removeTest(test.id)}
-                  className="text-red-600"
+                  className="text-red-600 cursor-pointer
+                             hover:text-red-800 transition"
+                  title="Remove test"
                 >
                   ✕
                 </button>
@@ -233,7 +215,6 @@ export function PackageForm({
           ))}
         </div>
 
-        {/* -------- PRICE SUMMARY -------- */}
         <div className="border rounded p-4 space-y-3">
           <div className="flex justify-between font-medium">
             <span>Total Test Price</span>
@@ -264,9 +245,17 @@ export function PackageForm({
 
         <button
           disabled={loading}
-          className="w-full bg-black text-white py-2 rounded disabled:opacity-50"
+          className="w-full bg-black text-white py-2 rounded
+                     cursor-pointer disabled:cursor-not-allowed
+                     hover:bg-gray-900 transition disabled:opacity-50"
         >
-          {loading ? "Saving..." : "Save Package"}
+          {loading
+            ? defaultValues
+              ? "Updating..."
+              : "Saving..."
+            : defaultValues
+            ? "Update Package"
+            : "Save Package"}
         </button>
       </div>
     </form>
