@@ -8,6 +8,7 @@ const links = [
   { href: "/tests", label: "Tests" },
   { href: "/packages", label: "Packages" },
   { href: "/admins", label: "Admins" },
+  {href:"/bookings", label:"Bookings" }
 ];
 
 export default function Sidebar() {
